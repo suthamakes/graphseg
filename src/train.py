@@ -245,7 +245,7 @@ def plot_predictions(model, device, data_path='data/raw/Indian_pines_corrected.m
     plt.savefig(output_plot_path, dpi=300)
     plt.close()
     
-    msg = f"🖼️ 3-panel plot saved to {output_plot_path}"
+    msg = f"3-panel plot saved to {output_plot_path}"
     if logger:
         logger.info(msg)
     else:
@@ -314,7 +314,7 @@ def main():
         'test_samples':  len(test_dataset),
     }
     csv_path = log_experiment(params, metrics, log_dir='results')
-    logger.info(f"📊 Experiment results logged to {csv_path}")
+    logger.info(f"Experiment results logged to {csv_path}")
     
     # Plot and save segmented images
     logger.info("Generating segmentation plots...")
