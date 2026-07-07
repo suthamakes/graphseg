@@ -1,0 +1,20 @@
+indian_pines:
+  # Segmentation
+  n_segments: 1000
+  compactness: 10.0
+  
+  # Graph Construction
+  pca_components: 30
+  top_k: 10
+  hops: [1, 2]
+  
+  # Graph Partition
+  num_clusters: 10  # This is 'c'
+  
+  # GCN Model & Training
+  hidden_units: 64
+  gcn_layers: 2
+  epochs: 400
+  learning_rate: 0.005
+  optimizer: "Adam"
+  trials: 10
