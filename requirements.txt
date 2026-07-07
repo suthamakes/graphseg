@@ -45,3 +45,6 @@ threadpoolctl==3.6.0
 torch==2.12.0
 triton==3.7.0
 typing_extensions==4.15.0
+scikit-image
+pymetis
+pyyaml
