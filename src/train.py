@@ -101,7 +101,7 @@ def get_model(model_name: str, config: dict, device: torch.device) -> nn.Module:
     """
     if model_name == "cnn1d":
         model = init_cnn1d(
-            in_channels=config.get("in_channels") or 200,
+            in_channels=1,
             num_classes=config.get("num_classes") or 16,
             dropout=config.get("dropout") or 0.2,
         )
@@ -368,7 +368,7 @@ def train_gcn(model, pt_subgraphs, optimizer, config, logger):
 # Section 4 — Evaluation
 # ===========================================================================
 
-def evaluate_cnn(model, test_loader, device, logger):
+def evaluate_cnn(model, model_name, test_loader, device, logger):
     """
     Evaluate a CNN model on the test DataLoader.
 
@@ -382,8 +382,8 @@ def evaluate_cnn(model, test_loader, device, logger):
         for inputs, labels in test_loader:
             inputs = inputs.to(device)
 
-            # 1D CNN data is stored as (N, B, 1); Conv2d needs (N, B, 1, 1)
-            if inputs.dim() == 3:
+            # 2D/3D CNN data may need an extra dim; Conv1d data is already (N, 1, B)
+            if inputs.dim() == 3 and model_name != "cnn1d":
                 inputs = inputs.unsqueeze(-1)
             outputs = model(inputs)
             if outputs.dim() == 4:
@@ -626,7 +626,7 @@ def main():
 
         # 4. Evaluate
         logger.info("Evaluating...")
-        metrics = evaluate_cnn(model, test_loader, device, logger)
+        metrics = evaluate_cnn(model, args.model, test_loader, device, logger)
 
         # 5. Log to CSV
         params = {
