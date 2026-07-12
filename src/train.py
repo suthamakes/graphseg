@@ -262,7 +262,7 @@ def get_gcn_data(config: dict, seed: int, device: torch.device, run_dir: str, lo
 # Section 3 — Training loops
 # ===========================================================================
 
-def train_cnn(model, train_loader, criterion, optimizer, device, epochs, logger):
+def train_cnn(model, model_name, train_loader, criterion, optimizer, device, epochs, logger):
     """
     Standard mini-batch training loop for CNN models.
 
@@ -276,13 +276,13 @@ def train_cnn(model, train_loader, criterion, optimizer, device, epochs, logger)
         for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
 
-            # 1D CNN data is stored as (N, B, 1); Conv2d needs (N, B, 1, 1)
-            if inputs.dim() == 3:
+            # 2D/3D CNN data may need an extra dim; Conv1d data is already (N, 1, B)
+            if inputs.dim() == 3 and model_name != "cnn1d":
                 inputs = inputs.unsqueeze(-1)
             optimizer.zero_grad()
             outputs = model(inputs)
 
-            # 1D CNN output is (N, C, 1, 1) — squeeze to (N, C)
+            # Old Conv2d 1D CNN output was (N, C, 1, 1); squeeze to (N, C)
             if outputs.dim() == 4:
                 outputs = outputs.squeeze(-1).squeeze(-1)
 
@@ -508,7 +508,7 @@ def plot_cnn_predictions(model, model_name, device, patch_size,
     # Build all-pixel input tensor
     if model_name == "cnn1d":
         flat    = cube.reshape(-1, bands).astype(np.float32)
-        x_input = torch.tensor(flat).unsqueeze(-1).unsqueeze(-1)   # (H*W, B, 1, 1)
+        x_input = torch.tensor(flat).unsqueeze(1)   # (H*W, 1, B)
         batch_size = 512
 
     else:  # cnn2d or cnn3d
@@ -622,7 +622,7 @@ def main():
 
         # 3. Train
         logger.info("Starting training...")
-        train_cnn(model, train_loader, criterion, optimizer, device, args.epochs, logger)
+        train_cnn(model, args.model, train_loader, criterion, optimizer, device, args.epochs, logger)
 
         # 4. Evaluate
         logger.info("Evaluating...")

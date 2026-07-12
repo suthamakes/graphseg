@@ -4,12 +4,11 @@ models.cnn1d.model
 1-D spectral CNN for pixel-wise HSI classification.
 
 The model treats each pixel as a 1-D spectral vector and applies
-1×1 convolutions (equivalent to per-band linear projections) to learn
-a compact spectral embedding before classification.
+Conv1d layers with kernels > 1 that slide along the spectral dimension,
+learning local spectral patterns.
 
-Input shape : (N, B, 1, 1)  where B = number of spectral bands
-Output shape: (N, C, 1, 1)  where C = number of classes
-              → squeeze to (N, C) before loss
+Input shape : (N, 1, B)  where B = number of spectral bands
+Output shape: (N, C)
 """
 
 import torch
@@ -18,37 +17,43 @@ import torch.nn as nn
 
 class Net(nn.Module):
     """
-    1-D spectral CNN using Conv2d(1×1) kernels.
+    1-D spectral CNN using Conv1d with spectral kernels.
 
     Architecture
     ------------
-    Conv2d(B → 128, k=1) → BatchNorm2d → ReLU → Dropout(0.2)
-    Conv2d(128 → C,  k=1)
+    Conv1d(1 → 64, k=7, pad=3) → BatchNorm1d → ReLU → Dropout
+    Conv1d(64 → 128, k=5, pad=2) → BatchNorm1d → ReLU → Dropout
+    AdaptiveAvgPool1d(1) → Linear(128 → C)
 
     Parameters
     ----------
     in_channels : int
-        Number of spectral bands (default: 200 for Indian Pines corrected).
+        Number of input channels (default: 1 for spectral vector).
     num_classes : int
         Number of land-cover classes (default: 16).
     dropout : float
-        Dropout probability applied after the first conv block.
+        Dropout probability applied after each conv block.
     """
 
-    def __init__(self, in_channels: int = 200, num_classes: int = 16, dropout: float = 0.2):
+    def __init__(self, in_channels: int = 1, num_classes: int = 16, dropout: float = 0.2):
         super(Net, self).__init__()
 
-        self.conv1   = nn.Conv2d(in_channels, 128, kernel_size=1)
-        self.bn1     = nn.BatchNorm2d(128, momentum=0.1)
-        self.relu    = nn.ReLU(inplace=True)
-        self.dropout = nn.Dropout(dropout)
-        self.conv2   = nn.Conv2d(128, num_classes, kernel_size=1)
+        self.conv1 = nn.Conv1d(in_channels, 64, kernel_size=7, padding=3)
+        self.bn1   = nn.BatchNorm1d(64, momentum=0.1)
+        self.conv2 = nn.Conv1d(64, 128, kernel_size=5, padding=2)
+        self.bn2   = nn.BatchNorm1d(128, momentum=0.1)
+        self.relu  = nn.ReLU(inplace=True)
+        self.drop1 = nn.Dropout(dropout)
+        self.drop2 = nn.Dropout(dropout)
+        self.pool  = nn.AdaptiveAvgPool1d(1)
+        self.fc    = nn.Linear(128, num_classes)
 
-        # Xavier uniform initialisation, zero bias
         nn.init.xavier_uniform_(self.conv1.weight)
         nn.init.xavier_uniform_(self.conv2.weight)
+        nn.init.xavier_uniform_(self.fc.weight)
         self.conv1.bias.data.zero_()
         self.conv2.bias.data.zero_()
+        self.fc.bias.data.zero_()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -56,22 +61,28 @@ class Net(nn.Module):
 
         Parameters
         ----------
-        x : torch.Tensor  shape (N, B, 1, 1)
+        x : torch.Tensor  shape (N, 1, B)
 
         Returns
         -------
-        torch.Tensor  shape (N, C, 1, 1)
+        torch.Tensor  shape (N, C)
         """
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.dropout(x)
+        x = self.drop1(x)
         x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+        x = self.drop2(x)
+        x = self.pool(x)
+        x = x.squeeze(-1)
+        x = self.fc(x)
         return x
 
 
 def initialize_parameters(
-    in_channels: int = 200,
+    in_channels: int = 1,
     num_classes: int = 16,
     dropout: float = 0.2,
     seed: int = 1,

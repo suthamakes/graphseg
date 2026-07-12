@@ -91,9 +91,9 @@ Train_X, Test_X, TrLabel, TeLabel = extract_and_split_data(X_normalized, labels_
 TrLabel_encoded = one_hot_encode_labels(TrLabel, num_classes=16)
 TeLabel_encoded = one_hot_encode_labels(TeLabel, num_classes=16)
 
-# 6. Add Channel Dimension for 1D CNN Input (Samples, Steps, Channels)
-Train_X_ready = np.expand_dims(Train_X, axis=-1)
-Test_X_ready = np.expand_dims(Test_X, axis=-1)
+# 6. Reshape for 1D CNN: (Samples, Channels, Spectral_Length)
+Train_X_ready = np.expand_dims(Train_X, axis=1)
+Test_X_ready = np.expand_dims(Test_X, axis=1)
 
 print("\nSaving finalized arrays to sample_data folder...")
 np.save(os.path.join(OUTPUT_DIR, 'Train_X.npy'), Train_X_ready)
